@@ -25,6 +25,8 @@ button:focus-visible{outline:3px dashed var(--c0);outline-offset:2px}
 .btn:hover:not(:disabled){background:var(--c2)}
 .btn:active:not(:disabled){box-shadow:none;transform:translate(3px,3px)}
 .btn:disabled{color:var(--c1);border-color:var(--c1);box-shadow:none;cursor:default}
+.mdlg{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(8,24,32,.4)}
+.mdlg .box{margin:0 16px;text-align:center;display:flex;flex-direction:column;gap:10px;min-width:60%;max-width:90%}
 .box{background:var(--c3);border:4px double var(--c0);padding:10px 12px;margin:6px}
 canvas{display:block;width:100%;max-width:100%;image-rendering:pixelated;border-bottom:4px solid var(--c0);background:var(--c3)}
 .title{display:flex;flex-direction:column;gap:6px;padding:6px}
@@ -617,6 +619,19 @@ function load(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');i
 function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(S));}catch(e){}}
 const LV_MAX=50;
 const lv=k=>Math.min(LV_MAX,1+Math.floor(S.xp[k]/3));
+// 咒語熟練：把 1~50 的內部等級分成 F～SSS 十三個階級
+const RANKS=[['F',1],['E',4],['D',7],['C',10],['C+',13],['B',17],['B+',21],['A',25],['A+',29],['A++',33],['S',37],['SS',41],['SSS',46]];
+const rankOf=l=>{let r=RANKS[0][0];for(const x of RANKS)if(l>=x[1])r=x[0];return r;};
+const rk=k=>rankOf(lv(k));
+function masteryDlg(k,l0){
+  const l1=lv(k);if(l1<=l0)return Promise.resolve();
+  const r0=rankOf(l0),r1=rankOf(l1),up=r0!==r1;
+  return new Promise(res=>{
+    const d=document.createElement('div');d.className='mdlg';d.setAttribute('role','dialog');
+    d.innerHTML=`<div class="box"><h2 class="pix">${up?'熟練度提高':'熟練度微幅增加'}</h2><p>${UNITS[k].name}的咒語${up?`熟練度提高了！${r0} → ${r1}`:`熟練度微幅增加（${r1}）`}</p><button class="btn">好</button></div>`;
+    document.body.appendChild(d);const b=d.querySelector('button');b.onclick=()=>{d.remove();res();};b.focus();
+  });
+}
 // 傷害用的等級：Lv5 以前每級 +4，之後每級只 +1.2，避免高等級一擊秒殺
 const lvPow=k=>{const l=lv(k);return l<=5?l:5+(l-5)*.3;};
 
@@ -668,7 +683,7 @@ function showMap(){
     <div class="stages">${STAGES.map((s,i)=>{
       const lock=i>S.cleared, b=S.best[i]||0;
       return `<button class="btn stage" data-i="${i}" ${lock?'disabled':''}><span class="n">${i+1}</span><span class="t">${s.place}<small>${lock?'尚未解鎖':'第 '+(i+1)+' 層｜怪物 3 隻｜'+'★'.repeat(b)+'☆'.repeat(3-b)}</small></span></button>`;}).join('')}</div>
-    <div class="box"><div class="stats">${KEYS.map(k=>`<span><span class="pix">${UNITS[k].name}</span> Lv${lv(k)}</span>`).join('')}</div>
+    <div class="box"><div class="stats">${KEYS.map(k=>`<span><span class="pix">${UNITS[k].name}</span> ${rk(k)}</span>`).join('')}</div>
     <p class="dim" style="margin-top:8px">累計答對 ${S.right} 題・答錯 ${S.wrong} 題</p></div>
     <button class="btn" id="back">離開修煉塔</button>
   </div>`;
@@ -726,7 +741,7 @@ function spiritMenu(){
   const avail=k=>(UNITS[k].minTier||1)<=B.tier&&B.tier<=(UNITS[k].maxTier||3);
   act.innerHTML=`<div class="tabs">${Object.keys(GROUPS).map(g=>`<button class="btn grp${B.grp===g?' on':''}" data-g="${g}">${GROUPS[g]}</button>`).join('')}</div>
      <div class="menu">${KEYS.filter(k=>UNITS[k].grp===B.grp).map(k=>{const r=rel(k,B.el),ok=avail(k);return `<button class="btn sp" data-k="${k}" ${ok?'':'disabled'}>
-     <b>${UNITS[k].name}</b><small>${elName(UNITS[k].elem)}・${UNITS[k].unit}・Lv${lv(k)}</small>${ok&&r?`<span class="weak pix">${r>0?'剋制':'被剋'}</span>`:''}</button>`}).join('')}</div>
+     <b>${UNITS[k].name}</b><small>${elName(UNITS[k].elem)}・${UNITS[k].unit}・熟練 ${rk(k)}</small>${ok&&r?`<span class="weak pix">${r>0?'剋制':'被剋'}</span>`:''}</button>`}).join('')}</div>
      <div class="row" style="margin:0 6px 6px"><button class="btn" id="backT" style="flex:none;font-size:.85rem">← 換等級（目前：${TIERS[B.tier].name}）</button></div>`;
   act.querySelectorAll('.sp').forEach(b=>b.onclick=()=>ask(b.dataset.k));
   act.querySelectorAll('.grp').forEach(b=>b.onclick=()=>{B.grp=b.dataset.g;spiritMenu();});
@@ -736,7 +751,7 @@ function spiritMenu(){
 function ask(k){
   const q=draw1(k,B.tier), opts=shuffle(q.c);
   const act=document.getElementById('act');
-  act.innerHTML=`<div class="box quiz"><span class="scroll">${UNITS[k].name} Lv${lv(k)} 的咒語卷軸・難度${'★'.repeat(q.d)}${q.h&&B.tier===3?'（答對會'+(B.mode==='def'?'反擊':'爆擊')+'）':''}</span><p class="q">${esc(q.q)}</p>
+  act.innerHTML=`<div class="box quiz"><span class="scroll">${UNITS[k].name}（熟練 ${rk(k)}）的咒語卷軸・難度${'★'.repeat(q.d)}${q.h&&B.tier===3?'（答對會'+(B.mode==='def'?'反擊':'爆擊')+'）':''}</span><p class="q">${esc(q.q)}</p>
     <div class="opts">${opts.map((o,i)=>`<button class="btn opt" data-i="${i}">${esc(o)}</button>`).join('')}</div>
     <button class="btn" id="cancel" style="align-self:flex-start;font-size:.85rem">換精靈</button></div>`;
   cancel.onclick=()=>spiritMenu();
@@ -751,7 +766,7 @@ async function answer(k,q,opts,pick){
   document.querySelectorAll('.opt').forEach((b,i)=>{b.disabled=true;if(opts[i]===q.c[0])b.classList.add('right');else if(i===pick)b.classList.add('wrong');});
   cancel.remove();
   ok?S.right++:S.wrong++;
-  let note='';
+  let note='',l0=lv(k);
   if(!def){
     if(ok){
       S.xp[k]++;B.streak++;
@@ -794,6 +809,7 @@ async function answer(k,q,opts,pick){
     await retire();
     note=`${note}（受到 ${dmg} 點傷害）`+(counter>0?`高難度咒語觸發反擊，對${B.st.name}造成 ${counter} 點傷害！`:'');
   }
+  if(ok)await masteryDlg(k,l0);
   save();
   feedback(ok,q,note);
 }
