@@ -501,10 +501,13 @@ let S=freshState();
 function freshState(){return{cleared:0,xp:{none:0,light:0,electric:0,fire:0,poison:0,quantum:0,spacetime:0},best:[0,0,0,0,0],right:0,wrong:0};}
 function load(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(d&&d.xp){S=Object.assign(freshState(),d);S.xp=Object.assign(freshState().xp,d.xp);if(!Array.isArray(S.best)||S.best.length!==5){S.best=[0,0,0,0,0];for(let i=0;i<(S.cleared||0)&&i<5;i++)S.best[i]=1;}}}catch(e){}}
 function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(S));}catch(e){}}
-const lv=k=>Math.min(5,1+Math.floor(S.xp[k]/3));
+const LV_MAX=50;
+const lv=k=>Math.min(LV_MAX,1+Math.floor(S.xp[k]/3));
+// 傷害用的等級：Lv5 以前每級 +4，之後每級只 +1.2，避免高等級一擊秒殺
+const lvPow=k=>{const l=lv(k);return l<=5?l:5+(l-5)*.3;};
 
 const decks={};
-// 精靈等級越高，越常抽到該題庫中較難的題目：Lv1 抽最簡單的，Lv5 抽最難的（依難度星數與題目長度排序）
+// 精靈等級越高，越常抽到該題庫中較難的題目：Lv1 抽最簡單的，Lv50 抽最難的（依難度星數與題目長度排序）
 const pools={};
 function draw1(k,t){
   const pool=QB[t][k], id=t+k, n=pool.length;
@@ -512,7 +515,7 @@ function draw1(k,t){
     const ord=pool.map((_,i)=>i).sort((a,b)=>(pool[a].d*100+pool[a].q.length)-(pool[b].d*100+pool[b].q.length));
     pools[id]={pct:[],recent:[]};ord.forEach((i,r)=>pools[id].pct[i]=n>1?r/(n-1):0);
   }
-  const P=pools[id], target=(lv(k)-1)/4;
+  const P=pools[id], target=(lv(k)-1)/(LV_MAX-1);
   const cand=pool.map((_,i)=>i).filter(i=>!P.recent.includes(i));
   const w=cand.map(i=>Math.exp(-Math.pow((P.pct[i]-target)/.3,2)));
   let r=Math.random()*w.reduce((x,y)=>x+y,0),j=0;
@@ -639,7 +642,7 @@ async function answer(k,q,opts,pick){
     if(ok){
       S.xp[k]++;B.streak++;
       const crit=B.tier===3&&q.h, mult=(r>0?2:r<0?.5:1)*(1+Math.min(.5,(B.streak-1)*.1))*(crit?1.5:1);
-      const dmg=Math.max(1,Math.round((16+lv(k)*4)*mult*TIERS[B.tier].mult*(0.9+Math.random()*.2)/B.st.def));
+      const dmg=Math.max(1,Math.round((16+lvPow(k)*4)*mult*TIERS[B.tier].mult*(0.9+Math.random()*.2)/B.st.def));
       note=(r>0?'屬性剋制，傷害加倍！':r<0?'屬性不利，傷害減半……':'')+(crit?'高難度咒語爆擊，傷害 +50%！':'');
       setLog(`咒語完成！<b>${UNITS[k].name}</b>現身。${note}`);
       await sleep(620);
