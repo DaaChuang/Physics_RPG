@@ -15,8 +15,8 @@
   --body:"DotGothic16","Noto Sans TC","PingFang TC","Microsoft JhengHei",monospace;
   color-scheme:light;
 }
-html,body{height:100%}
-body{background:var(--c1);color:var(--c0);font-family:var(--body);font-size:16px;line-height:1.5;
+html{height:100%}
+body{min-height:100%;margin:0;box-sizing:border-box;background:var(--c1);color:var(--c0);font-family:var(--body);font-size:16px;line-height:1.5;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px}
 .wrap{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:0;background:var(--c3);border:4px solid var(--c0);box-shadow:0 0 0 4px var(--c2)}
 h1,h2,.pix{font-family:var(--pix);font-weight:400;margin:0;text-wrap:balance}
@@ -91,7 +91,12 @@ canvas{display:block;width:100%;max-width:100%;image-rendering:pixelated;border-
 .dp .btn,.ab{padding:0;font-size:1.2rem;touch-action:none}
 .dp .u{grid-area:1/2}.dp .l{grid-area:2/1}.dp .r{grid-area:2/3}.dp .d{grid-area:3/2}
 .ab{width:76px;height:76px;border-radius:50%}
-.wbar{display:flex;justify-content:space-between;gap:8px;margin:6px;font-family:var(--pix);font-size:.85rem}
+.wbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px;font-family:var(--pix);font-size:.85rem}
+.wbar .btn{flex:none;font-size:.8rem;padding:2px 8px}
+/* 地圖畫面要整個塞進一個手機螢幕：地圖依螢幕高度縮放，不用捲動就能按到方向鍵 */
+.cvwrap canvas{width:min(100%,calc((100vh - 330px)*1.111));width:min(100%,calc((100dvh - 330px)*1.111));margin:0 auto}
+.cvwrap{background:var(--c3)}
+@media (max-height:760px){.dp{grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px)}.ab{width:68px;height:68px}.log{min-height:2.6em;font-size:.95rem}}
 .blink{animation:bl 1s steps(2) infinite}
 @keyframes bl{50%{opacity:0}}
 @media (prefers-reduced-motion:reduce){.meter i{transition:none}.blink{animation:none}}
@@ -1111,12 +1116,11 @@ function showWorld(msg){
   app.innerHTML=`
     <div class="cvwrap"><canvas id="cv" width="320" height="288" aria-label="地圖"></canvas></div>
     <div class="box log" id="log"></div>
-    <div class="wbar"><span id="wHp"></span><span>牛頓徽章：${S.best[0]>0?'●':'○'}</span></div>
+    <div class="wbar"><span id="wHp"></span><span>牛頓徽章：${S.best[0]>0?'●':'○'}</span><button class="btn" id="toTitle">回標題</button></div>
     <div class="pad">
       <div class="dp">${[['u','▲'],['l','◀'],['r','▶'],['d','▼']].map(([k,t])=>`<button class="btn ${k}" data-d="${k}" aria-label="${k}">${t}</button>`).join('')}</div>
       <button class="btn ab" id="aBtn">A</button>
-    </div>
-    <div class="row" style="margin:0 6px 6px"><button class="btn" id="toTitle" style="flex:none;font-size:.85rem">回標題</button></div>`;
+    </div>`;
   wmsg(msg||'用方向鍵（或下方按鈕）移動，走進深色草叢會遇到野生怪物。');
   const map={u:DIRS.ArrowUp,d:DIRS.ArrowDown,l:DIRS.ArrowLeft,r:DIRS.ArrowRight};
   app.querySelectorAll('.dp .btn').forEach(b=>{
