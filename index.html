@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>物理？根本就是召喚咒語！</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1043,21 +1048,20 @@ function frame(now){
   raf=requestAnimationFrame(frame);
 }
 
-// 在 LINE／IG／FB 等內建瀏覽器開啟時，提醒改用一般瀏覽器（內建瀏覽器的存檔可能不會保留）
+// 在 LINE／IG／FB 等內建瀏覽器開啟時，詢問是否跳轉到外部瀏覽器（內建瀏覽器的存檔可能不會保留）
 (function(){
-  const ua=navigator.userAgent||'',isLine=/Line\//i.test(ua),inApp=isLine||/FBAN|FBAV|FB_IAB|Instagram|MicroMessenger|Messenger/i.test(ua);
+  const ua=navigator.userAgent||'',isLine=/Line\//i.test(ua),isAndroid=/Android/i.test(ua),inApp=isLine||/FBAN|FBAV|FB_IAB|Instagram|MicroMessenger|Messenger/i.test(ua);
   if(!inApp)return;
   const d=document.createElement('div');d.className='box';d.id='iab';d.setAttribute('role','alert');
-  d.innerHTML='<b class="pix">請改用瀏覽器開啟</b><p style="margin:6px 0">你現在是在 '+(isLine?'LINE':'App')+' 內建的瀏覽器裡，遊戲進度可能不會保留。請改用 Safari 或 Chrome 開啟。</p><div class="row" style="gap:8px;flex-wrap:wrap">'+(isLine?'<button class="btn" id="iabGo" style="font-size:.9rem">用瀏覽器開啟</button>':'')+'<button class="btn" id="iabCopy" style="font-size:.9rem">複製網址</button><button class="btn" id="iabX" style="font-size:.9rem">先不用</button></div><p class="dim" id="iabMsg" style="margin:6px 0 0"></p>';
+  d.innerHTML='<b class="pix">要跳轉到外部瀏覽器嗎？</b><p style="margin:6px 0">你現在是在 '+(isLine?'LINE':'App')+' 內建的瀏覽器裡，遊戲進度可能不會保留。建議改用 Safari 或 Chrome 開啟。</p><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" id="iabGo" style="font-size:.9rem">跳轉到瀏覽器</button><button class="btn" id="iabX" style="font-size:.9rem">先不用</button></div><p class="dim" id="iabMsg" style="margin:6px 0 0"></p>';
   const a=document.getElementById('app');a.parentNode.insertBefore(d,a);
-  const msg=t=>{document.getElementById('iabMsg').textContent=t;};
   document.getElementById('iabX').onclick=()=>d.remove();
-  document.getElementById('iabCopy').onclick=()=>{
-    const u=location.href.split('#')[0].replace(/[?&]openExternalBrowser=1/,'');
-    (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>msg('已複製網址，請貼到 Safari 或 Chrome 開啟。'),()=>msg('無法自動複製，請點右上角「⋯」選擇用瀏覽器開啟。'));
+  document.getElementById('iabGo').onclick=()=>{
+    const u=new URL(location.href);u.hash='';
+    if(isLine){u.searchParams.set('openExternalBrowser','1');location.href=u.toString();return;}
+    if(isAndroid){location.href='intent://'+u.host+u.pathname+u.search+'#Intent;scheme='+u.protocol.replace(':','')+';package=com.android.chrome;end';return;}
+    document.getElementById('iabMsg').textContent='這個 App 不允許自動跳轉，請點右上角「⋯」或分享按鈕，選擇「用 Safari 開啟」。';
   };
-  const go=document.getElementById('iabGo');
-  if(go)go.onclick=()=>{const u=new URL(location.href);u.searchParams.set('openExternalBrowser','1');location.href=u.toString();};
 })();
 
 load();showTitle();
