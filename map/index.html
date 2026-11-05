@@ -904,8 +904,8 @@ const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function play(kind,dur){B.fx.push({kind,t0:performance.now(),dur});return sleep(dur);}
 function addText(t,x,y){B.texts.push({t,x,y,t0:performance.now()});}
 function startLoop(){ctx=document.getElementById('cv').getContext('2d');ctx.imageSmoothingEnabled=false;ctx.setTransform(2,0,0,2,0,0);cancelAnimationFrame(raf);raf=requestAnimationFrame(frame);}
-function stopLoop(){cancelAnimationFrame(raf);cancelAnimationFrame(wraf);W.active=false;}
-let wraf=0;
+function stopLoop(){cancelAnimationFrame(raf);cancelAnimationFrame(wraf);W.active=false;wtok++;}
+let wraf=0,wtok=0;
 function sprite(name,x,y,s,flip,hide){
   const d=SPR[name],big=d.m.length>12;if(big){s=s/2;if(d.r)flip=(flip==='w');}
   const R=v=>Math.round(v*2)/2;
@@ -1158,7 +1158,7 @@ function showWorld(msg){
   });
   aBtn.onclick=interact;toTitle.onclick=showTitle;
   ctx=document.getElementById('cv').getContext('2d');ctx.imageSmoothingEnabled=false;ctx.setTransform(2,0,0,2,0,0);
-  W.active=true;wraf=requestAnimationFrame(wframe);
+  W.active=true;W.last=0;const tk=++wtok;wraf=requestAnimationFrame(n=>wframe(n,tk));
 }
 addEventListener('keydown',e=>{
   if(!W.active)return;const k=e.key.length===1?e.key.toLowerCase():e.key;
@@ -1248,11 +1248,12 @@ function wtile(c,x,y,X,Y){
     if(o(0,-1))f(0,0,0,16,1);if(o(0,1))f(0,0,15,16,1);if(o(-1,0))f(0,0,0,1,16);if(o(1,0))f(0,15,0,1,16);}
   else if(c==='S'||c==='N'){f(1,7,8,2,8);f(0,2,2,12,7);f(3,3,3,10,5);f(0,5,5,6,1);}
 }
-function wframe(now){
-  if(!W.active||!document.getElementById('cv'))return;
+function wframe(now,tk){
+  if(tk!==wtok||!W.active||!document.getElementById('cv'))return;
+  const dt=W.last?Math.min(50,now-W.last):1000/60;W.last=now;
   const tx=W.x*TS,ty=W.y*TS;
   if(W.moving){
-    const sp=1.12;W.px+=Math.sign(tx-W.px)*Math.min(sp,Math.abs(tx-W.px));W.py+=Math.sign(ty-W.py)*Math.min(sp,Math.abs(ty-W.py));
+    const sp=1.12*dt*60/1000;W.px+=Math.sign(tx-W.px)*Math.min(sp,Math.abs(tx-W.px));W.py+=Math.sign(ty-W.py)*Math.min(sp,Math.abs(ty-W.py));
     if(W.px===tx&&W.py===ty){W.moving=false;arrive();}
   }else if(W.held&&!W.lock)tryMove(W.held);
   const cx=Math.max(0,Math.min(MW*TS-160,Math.round(W.px+8-80))), cy=Math.max(0,Math.min(MH*TS-144,Math.round(W.py+8-72)));
@@ -1265,7 +1266,7 @@ function wframe(now){
   const hw=Math.round(W.hp/100*20);ctx.fillRect(30,2,22,6);ctx.fillStyle=GB[3];ctx.fillRect(31,3,20,4);ctx.fillStyle=GB[1];ctx.fillRect(31,3,hw,4);
   if(W.flash&&now-W.flash<650){ctx.fillStyle=GB[Math.floor((now-W.flash)/80)%2?0:3];ctx.globalAlpha=.7;ctx.fillRect(0,0,160,144);ctx.globalAlpha=1;}
   const wh=document.getElementById('wHp');if(wh)wh.textContent='生命 '+W.hp+'/100';
-  wraf=requestAnimationFrame(wframe);
+  wraf=requestAnimationFrame(n=>wframe(n,tk));
 }
 
 // 在 LINE／IG／FB 等內建瀏覽器開啟時，詢問是否跳轉到外部瀏覽器（內建瀏覽器的存檔可能不會保留）
