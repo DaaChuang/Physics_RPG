@@ -1202,7 +1202,7 @@ function arrive(){
   const c=tileAt(W.x,W.y);
   if(c==='D'){W.lock=true;W.held=null;gymScreen();}
   else if(c==='U'){W.lock=true;W.held=null;showMap();}
-  else if(c==='E'){const m=CM(),to=m.eTo,a=m.eAt;W.lock=true;W.held=null;setMap(to);W.x=a[0];W.y=a[1];showWorld('來到「'+MAPS[to].name+'」。');}
+  else if(c==='E'){const m=CM(),to=m.eTo,a=m.eAt;W.lock=true;W.held=null;setMap(to);W.x=a[0];W.y=a[1];setTimeout(()=>showWorld('來到「'+MAPS[to].name+'」。'),0);}
   else if(c==='g'){
     W.steps++;
     if(W.steps>=3&&Math.random()<.17){
