@@ -682,7 +682,7 @@ function showTitle(){
   </div>`;
   go.onclick=()=>showWorld();
   const r=document.getElementById('reset');
-  if(r)r.onclick=()=>{r.textContent='再按一次確認';r.onclick=()=>{S=freshState();W.hp=100;W.x=9;W.y=14;W.px=144;W.py=224;save();showTitle();};};
+  if(r)r.onclick=()=>{r.textContent='再按一次確認';r.onclick=()=>{S=freshState();setMap(0);W.hp=100;W.x=9;W.y=14;W.px=144;W.py=224;save();showTitle();};};
 }
 
 // ===== 畫面：地圖 =====
@@ -698,7 +698,7 @@ function showMap(){
     <button class="btn" id="back">離開修煉塔</button>
   </div>`;
   app.querySelectorAll('.stage').forEach(b=>b.onclick=()=>chooseLevel(+b.dataset.i));
-  back.onclick=()=>{W.x=17;W.y=8;showWorld('你離開了修煉塔。');};
+  back.onclick=()=>{setMap(0);W.x=17;W.y=8;showWorld('你離開了修煉塔。');};
 }
 function chooseLevel(i){
   const st=STAGES[i], b=S.best[i]||0;
@@ -874,10 +874,11 @@ function win(){
     const up2=document.getElementById('up');if(up2)up2.onclick=()=>startBattle(B.i,B.lvl+1);
     return;
   }
+  const gm=MAPS.find(x=>x.stage===B.i&&x.gym)||MAPS[0];
   act.innerHTML=`<div class="box fb"><span class="head ok">道館挑戰成功！</span>
-    <p>獲得牛頓徽章（${LEVELS[B.lvl].name}）。第二張地圖尚未開放，這是試玩版。</p>
+    <p>獲得${gm.badge}（${LEVELS[B.lvl].name}）。${gm.eTo===1?'通往第二張地圖的道路已經開放，出口在草原的右下角。':'下一張地圖尚未開放，這是試玩版。'}</p>
     <div class="row"><button class="btn" id="m">回到地圖</button>${B.lvl<2?'<button class="btn" id="up">挑戰更高強度</button>':''}</div></div>`;
-  m.onclick=()=>showWorld('你拿到了牛頓徽章！');
+  m.onclick=()=>showWorld('你拿到了'+gm.badge+'！');
   const up=document.getElementById('up');if(up)up.onclick=()=>startBattle(B.i,B.lvl+1,{world:true,hp:W.hp});
 }
 function lose(){
@@ -890,7 +891,7 @@ function lose(){
   setLog('你倒下了……');
   document.getElementById('act').innerHTML=`<div class="box fb"><span class="head ng">戰敗</span>
     <p>你被送回恢復水晶旁，生命已回復。</p><div class="row"><button class="btn" id="m">回到地圖</button></div></div>`;
-  W.hp=100;W.x=3;W.y=13;W.px=48;W.py=208;
+  {const sp=CM().spawn;W.hp=100;W.x=sp[0];W.y=sp[1];W.px=sp[0]*TS;W.py=sp[1]*TS;}
   m.onclick=()=>showWorld('你被送回恢復水晶旁，生命回復了。');
 }
 
@@ -1100,14 +1101,41 @@ const TS=16, MAP1=[
 'T..KN....p..gggggg....wT',
 'T........p..gggggg...wwT',
 'T..p.....p...........wwT',
-'T..pppppppppp..........T',
+'T..pppppppppp..........E',
 'T..gggg....ggggg.......T',
 'T..gggg....ggggg.......T',
 'TTTTTTTTTTTTTTTTTTTTTTTT'];
-const MW=MAP1[0].length, MH=MAP1.length, BLOCK='TwGSRKN';
+const MAP2=[
+'TTTTTTTTTTTTTTTTTTTTTTTT',
+'Trr...........GGGGGGGG.T',
+'Tr.........rr.GGGGGGGG.T',
+'T...........r.GGGDGGGG.T',
+'T...............Sp..r..T',
+'T.....gggg.......p.rr.fT',
+'T..rr.gggg....r..p.ggggT',
+'T..r..gggg....r..p.ggggT',
+'T.....gggg.......p.ggggT',
+'T.f..............p.ggggT',
+'T.f.......ggg..r.p.....T',
+'T..KN...r.ggg..r.p.....T',
+'T.........ggg....p...rrT',
+'T................p.....T',
+'Eppppppppppppppppp.....T',
+'T.....gggggg..r....ggggT',
+'Trr...gggggg.rr....ggggT',
+'TTTTTTTTTTTTTTTTTTTTTTTT'];
+const MAPS=[
+ {name:'新手草原',rows:MAP1,stage:0,wild:0,gym:'牛頓道館',badge:'牛頓徽章',spawn:[3,13],exitY:4,signS:'牛頓道館：只有能唸出物理咒語的召喚師，才能通過這扇門。大門在建築正下方。',
+  eTo:1,eAt:[1,14],eLock:'牛頓道館的徽章還沒拿到，通往東邊的道路被魔法封住了。先去打倒牛頓道館的怪物吧。'},
+ {name:'摩擦斜坡',rows:MAP2,stage:1,wild:1,gym:'摩擦道館',badge:'摩擦徽章',spawn:[3,13],exitY:4,signS:'摩擦道館：這座斜坡上的魔物會把巨石推下來。大門在建築正下方，路在斜坡的右側。',
+  eTo:0,eAt:[22,14]}
+];
+let MAP=MAPS[0].rows,MW=MAP[0].length,MH=MAP.length,BLOCK='TwGSRKNr';
+const CM=()=>MAPS[W.m];
+function setMap(i){W.m=i;MAP=MAPS[i].rows;MW=MAP[0].length;MH=MAP.length;}
 const DIRS={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]};
-const W={x:9,y:14,px:144,py:224,fx:0,fy:1,face:1,hp:100,steps:0,held:null,moving:false,lock:false,active:false,t:0};
-function tileAt(x,y){return (y>=0&&y<MH&&x>=0&&x<MW)?MAP1[y][x]:'T';}
+const W={m:0,x:9,y:14,px:144,py:224,fx:0,fy:1,face:1,hp:100,steps:0,held:null,moving:false,lock:false,active:false,t:0};
+function tileAt(x,y){return (y>=0&&y<MH&&x>=0&&x<MW)?MAP[y][x]:'T';}
 function wmsg(t){const l=document.getElementById('log');if(l)l.innerHTML=t;}
 function showWorld(msg){
   stopLoop();
@@ -1116,7 +1144,7 @@ function showWorld(msg){
   app.innerHTML=`
     <div class="cvwrap"><canvas id="cv" width="320" height="288" aria-label="地圖"></canvas></div>
     <div class="box log" id="log"></div>
-    <div class="wbar"><span id="wHp"></span><span>牛頓徽章：${S.best[0]>0?'●':'○'}</span><button class="btn" id="toTitle">回標題</button></div>
+    <div class="wbar"><span id="wHp"></span><span>${MAPS.map(m=>m.badge.replace('徽章','')+(S.best[m.stage]>0?'●':'○')).join(' ')}</span><button class="btn" id="toTitle">回標題</button></div>
     <div class="pad">
       <div class="dp">${[['u','▲'],['l','◀'],['r','▶'],['d','▼']].map(([k,t])=>`<button class="btn ${k}" data-d="${k}" aria-label="${k}">${t}</button>`).join('')}</div>
       <button class="btn ab" id="aBtn">A</button>
@@ -1141,7 +1169,9 @@ addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;
 function tryMove(d){
   W.fx=d[0];W.fy=d[1];if(d[0])W.face=d[0];
   const nx=W.x+d[0],ny=W.y+d[1];
-  if(BLOCK.includes(tileAt(nx,ny)))return;
+  const t=tileAt(nx,ny);
+  if(BLOCK.includes(t))return;
+  if(t==='E'&&CM().eLock&&!S.best[CM().stage]){W.held=null;popup('道路被封住了',CM().eLock);return;}
   W.x=nx;W.y=ny;W.moving=true;
 }
 function popup(title,msg){
@@ -1160,10 +1190,11 @@ function interact(){
   if(W.dlg){closeDlg();return;}
   if(!W.active||W.lock)return;
   const c=tileAt(W.x+W.fx,W.y+W.fy);
-  if(c==='S')popup('告示牌','牛頓道館：只有能唸出物理咒語的召喚師，才能通過這扇門。大門在建築正下方。');
+  if(c==='S')popup('告示牌',CM().signS);
   else if(c==='N')popup('告示牌','恢復水晶：面對水晶按 A 鍵與它對話，就能把生命回復到 100/100。深色草叢裡會遇到野生怪物，生命不足時記得回來。戰敗後也會被送回這裡。');
   else if(c==='K')heal();
-  else if(c==='G')wmsg('牛頓道館的牆壁。入口在建築下方正中央的門。');
+  else if(c==='G')wmsg(CM().gym+'的牆壁。入口在建築下方正中央的門。');
+  else if(c==='r')wmsg('一塊大石頭，擋住了去路。');
   else if(c==='R')wmsg('無限修煉塔。從下方的門進去，可以反覆挑戰各層怪物。');
   else if(c==='g')wmsg('深色草叢，裡面可能有野生怪物。');
 }
@@ -1171,24 +1202,25 @@ function arrive(){
   const c=tileAt(W.x,W.y);
   if(c==='D'){W.lock=true;W.held=null;gymScreen();}
   else if(c==='U'){W.lock=true;W.held=null;showMap();}
+  else if(c==='E'){const m=CM(),to=m.eTo,a=m.eAt;W.lock=true;W.held=null;setMap(to);W.x=a[0];W.y=a[1];showWorld('來到「'+MAPS[to].name+'」。');}
   else if(c==='g'){
     W.steps++;
     if(W.steps>=3&&Math.random()<.17){
       W.steps=0;W.lock=true;W.held=null;W.flash=performance.now();
-      const mi=Math.random()*3|0;wmsg(`野生的${STAGES[0].mons[mi].name}跳出來了！`);
-      setTimeout(()=>{if(!W.active)return;startBattle(0,0,{wild:true,world:true,mi,hp:W.hp});},650);
+      const m=CM(),mi=Math.random()*3|0;wmsg(`野生的${STAGES[m.stage].mons[mi].name}跳出來了！`);
+      setTimeout(()=>{if(!W.active)return;startBattle(m.stage,m.wild,{wild:true,world:true,mi,hp:W.hp});},650);
     }
   }
 }
 function gymScreen(){
-  const st=STAGES[0], b=S.best[0]||0;
+  const m=CM(), st=STAGES[m.stage], b=S.best[m.stage]||0;
   app.innerHTML=`<div class="title">
-    <h2>牛頓道館</h2>
+    <h2>${m.gym}</h2>
     <p class="dim">${esc(st.line)}要連續打倒 3 隻怪物（${st.mons.map(m=>m.name).join('、')}），每打倒一隻回復 25 點生命。你目前的生命是 ${W.hp}/100，可以先回恢復水晶回復。</p>
     <div class="stages">${LEVELS.map((l,k)=>`<button class="btn stage lvl" data-l="${k}"><span class="n">${b>k?'★':'☆'}</span><span class="t">${l.name}怪物<small>攻擊力、血量、防禦 ${Math.round(l.m*100)}%</small></span></button>`).join('')}</div>
     <button class="btn" id="back">先不挑戰</button></div>`;
-  app.querySelectorAll('.lvl').forEach(x=>x.onclick=()=>startBattle(0,+x.dataset.l,{world:true,hp:W.hp}));
-  back.onclick=()=>{W.y=4;showWorld('你離開了道館。');};
+  app.querySelectorAll('.lvl').forEach(x=>x.onclick=()=>startBattle(m.stage,+x.dataset.l,{world:true,hp:W.hp}));
+  back.onclick=()=>{W.y=m.exitY;showWorld('你離開了道館。');};
 }
 let kq=[];
 function crystal(X,Y,now){
@@ -1205,6 +1237,8 @@ function wtile(c,x,y,X,Y){
   if(c==='p'){f(2,3,4,2,2);f(2,10,10,2,2);}
   else if(c==='f'){f(1,3,4,2,2);f(0,3,6,1,4);f(1,10,9,2,2);f(0,10,11,1,4);}
   else if(c==='T'){f(1,1,1,14,10);f(0,1,1,14,1);f(0,1,10,14,1);f(0,6,11,4,5);f(2,4,3,3,2);}
+  else if(c==='r'){const ws=[6,10,12,12,12,12,12,12,12,10,6];ws.forEach((w,i)=>{f(0,8-w/2,3+i,w,1);if(i>0&&i<10)f(1,9-w/2,3+i,w-2,1);});f(2,5,6,3,2);f(0,9,9,3,1);f(0,6,11,4,1);}
+  else if(c==='E'){f(2,0,0,16,16);f(3,0,5,16,6);if(x===0){f(0,4,7,9,2);f(0,3,5,2,6);f(0,5,4,2,8);}else{f(0,3,7,9,2);f(0,11,5,2,6);f(0,9,4,2,8);}}
   else if(c==='w'){f(2,0,0,16,16);f(1,2,4,5,1);f(1,9,10,5,1);}
   else if(c==='G'||c==='D'){const top=tileAt(x,y-1)!=='G'&&tileAt(x,y-1)!=='D';f(1,0,0,16,16);if(top){f(0,0,0,16,6);f(2,0,6,16,1);}else{f(0,0,7,16,1);f(2,3,3,4,3);f(2,10,10,4,3);}if(c==='D'){f(0,3,3,10,13);f(2,5,5,6,11);f(0,7,5,2,11);}}
   else if(c==='K'){f(0,2,11,12,5);f(2,3,12,10,3);f(1,3,14,10,1);f(0,4,10,8,1);f(3,4,11,8,1);kq.push([X,Y]);}
