@@ -872,13 +872,60 @@ function spDlg(names){
   d.innerHTML=`<div class="box"><h2 class="pix">解鎖新精靈</h2><p>${names.join('、')}加入了你的隊伍！對應屬性的召喚傷害提高（每位 +10%）。召喚時可以選擇要由哪一位出戰。</p><button class="btn">好</button></div>`;
   document.body.appendChild(d);const b=d.querySelector('button');b.onclick=()=>d.remove();b.focus();
 }
+
+// ===== 成就 =====
+const ACH=[];
+{
+  const CN={none:['力學小有所成','力學宗師'],light:['光學初窺門徑','光學宗師'],electric:['電磁略有心得','電磁宗師'],fire:['熱學初露鋒芒','熱學宗師'],poison:['化學初出茅廬','化學宗師'],quantum:['量子初探門徑','量子宗師'],spacetime:['時空初探門徑','時空宗師']};
+  for(const k of Object.keys(CN)){
+    ACH.push({id:'c_'+k,name:CN[k][0],desc:ATTR[k]+'屬性咒語熟練度達到 C 級',test:()=>lv(k)>=10});
+    ACH.push({id:'a_'+k,name:CN[k][1],desc:ATTR[k]+'屬性咒語熟練度達到 A 級',test:()=>lv(k)>=25});
+  }
+  STAGES.forEach((st,i)=>ACH.push({id:'gym'+i,name:st.place+'征服者',desc:'通關「'+st.place+'」的怪物（連續打倒 3 隻）',test:()=>(S.best[i]||0)>0}));
+  ACH.push({id:'allgym',name:'八方徽章',desc:'通關全部 8 關',test:()=>STAGES.every((s,i)=>(S.best[i]||0)>0)});
+  ACH.push({id:'high',name:'強者之路',desc:'以高階強度通關混沌王座',test:()=>(S.best[STAGES.length-1]||0)>=3});
+  ACH.push({id:'collect',name:'精靈收藏家',desc:'集齊全部 20 位歷史人物精靈',test:()=>S.unlock.length>=13});
+  ACH.push({id:'st5',name:'連擊新手',desc:'連續答對 5 題',test:()=>(S.maxStreak||0)>=5});
+  ACH.push({id:'st10',name:'連擊達人',desc:'連續答對 10 題',test:()=>(S.maxStreak||0)>=10});
+  ACH.push({id:'r100',name:'百題斬',desc:'累計答對 100 題',test:()=>S.right>=100});
+  ACH.push({id:'r500',name:'千錘百鍊',desc:'累計答對 500 題',test:()=>S.right>=500});
+}
+function achCheck(){
+  const got=ACH.filter(a=>!S.ach.includes(a.id)&&a.test());
+  if(!got.length)return Promise.resolve();
+  got.forEach(a=>S.ach.push(a.id));save();
+  return new Promise(res=>{
+    const d=document.createElement('div');d.className='mdlg';d.setAttribute('role','dialog');
+    d.innerHTML=`<div class="box" style="max-height:80vh;overflow:auto"><h2 class="pix">獲得成就</h2>${got.map(a=>`<p><b>《${a.name}》</b><br><span class="dim">${a.desc}</span></p>`).join('')}<button class="btn">好</button></div>`;
+    document.body.appendChild(d);const b=d.querySelector('button');b.onclick=()=>{d.remove();res();};b.focus();
+  });
+}
+function thumb(id,locked){
+  const c=document.createElement('canvas');c.width=48;c.height=48;c.style.width='48px';c.style.height='48px';c.style.imageRendering='pixelated';
+  const x=c.getContext('2d'),d=SPR[id];
+  d.m.forEach((row,r)=>{for(let q=0;q<row.length;q++){const ch=row[q];if(ch==='.')continue;x.fillStyle=GB[locked?1:shade(d.p[ch])];x.fillRect(q*2,r*2,2,2);}});
+  return c;
+}
+function showCodex(){
+  stopLoop();
+  const where=id=>{for(const i in UNLOCKS)if(UNLOCKS[i].includes(id))return STAGES[i].place;return '';};
+  app.innerHTML=`<div class="title"><h1>成就與圖鑑</h1>
+    <div class="box"><h2 class="pix" style="margin-bottom:8px">精靈圖鑑（${Object.keys(TEAMS).reduce((n,k)=>n+team(k).length,0)}/20）</h2>
+    <div class="spirits-intro" id="cdx">${Object.keys(TEAMS).map(k=>TEAMS[k].map((id,i)=>{const on=i===0||S.unlock.includes(id);
+      return `<div style="flex-direction:row;align-items:center;gap:8px"><span data-t="${id}" data-l="${on?0:1}"></span><span><b class="pix">${on?SPN[id]:'？？？'}</b><br><span class="dim">${elName(k)}・${on?(i===0?'初始精靈':'已解鎖・傷害 +10%'):'進入「'+where(id)+'」解鎖'}</span></span></div>`;}).join('')).join('')}</div></div>
+    <div class="box"><h2 class="pix" style="margin-bottom:8px">成就（${S.ach.length}/${ACH.length}）</h2>
+    ${ACH.map(a=>{const on=S.ach.includes(a.id);return `<p style="margin:4px 0;${on?'':'opacity:.55'}"><b>${on?'✔ 《'+a.name+'》':'？ 《'+a.name+'》'}</b><br><span class="dim">${a.desc}</span></p>`;}).join('')}</div>
+    <div class="row"><button class="btn" id="cdxBack">回標題</button></div></div>`;
+  document.querySelectorAll('#cdx [data-t]').forEach(s=>s.replaceWith(thumb(s.dataset.t,s.dataset.l==='1')));
+  cdxBack.onclick=showTitle;
+}
 const KEYS=Object.keys(UNITS);
 const SAVE_KEY='physics-summoner-v1';
 
 // ===== 狀態 =====
 let S=freshState();
-function freshState(){return{cleared:0,xp:{none:0,light:0,electric:0,fire:0,poison:0,quantum:0,spacetime:0},best:[0,0,0,0,0,0,0,0],unlock:[],pick:{},right:0,wrong:0};}
-function load(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(d&&d.xp){S=Object.assign(freshState(),d);S.xp=Object.assign(freshState().xp,d.xp);if(!Array.isArray(S.unlock))S.unlock=[];if(!S.pick||typeof S.pick!=='object')S.pick={};if(!Array.isArray(S.best)||S.best.length!==8){const o=Array.isArray(S.best)&&S.best.length===5?S.best:null;if(o){S.best=[o[0],o[1],o[2],o[3],0,0,0,o[4]];if(S.cleared>=5)S.cleared=8;}else{S.best=[0,0,0,0,0,0,0,0];for(let i=0;i<(S.cleared||0)&&i<8;i++)S.best[i]=1;}}}}catch(e){}}
+function freshState(){return{cleared:0,xp:{none:0,light:0,electric:0,fire:0,poison:0,quantum:0,spacetime:0},best:[0,0,0,0,0,0,0,0],unlock:[],pick:{},ach:[],maxStreak:0,right:0,wrong:0};}
+function load(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(d&&d.xp){S=Object.assign(freshState(),d);S.xp=Object.assign(freshState().xp,d.xp);if(!Array.isArray(S.unlock))S.unlock=[];if(!S.pick||typeof S.pick!=='object')S.pick={};if(!Array.isArray(S.ach))S.ach=[];if(!Array.isArray(S.best)||S.best.length!==8){const o=Array.isArray(S.best)&&S.best.length===5?S.best:null;if(o){S.best=[o[0],o[1],o[2],o[3],0,0,0,o[4]];if(S.cleared>=5)S.cleared=8;}else{S.best=[0,0,0,0,0,0,0,0];for(let i=0;i<(S.cleared||0)&&i<8;i++)S.best[i]=1;}}}}catch(e){}}
 function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(S));}catch(e){}}
 const LV_MAX=50;
 const lv=k=>Math.min(LV_MAX,1+Math.floor(S.xp[k]/3));
@@ -931,8 +978,9 @@ function showTitle(){
       ${Object.keys(GROUPS).map(g=>`<p class="pix" style="margin:6px 0 4px">${GROUPS[g]}</p><div class="spirits-intro">${KEYS.filter(k=>UNITS[k].grp===g).map(k=>`<div><span class="pix">${UNITS[k].name}（${elName(UNITS[k].elem)}）</span><span class="dim">${UNITS[k].unit}</span></div>`).join('')}</div>`).join('')}
     </div>
     <div class="box dim">地圖：用方向鍵（或畫面按鈕）移動，走進深色草叢會遇到野生怪物；上方的牛頓道館要連續打倒 3 隻怪物。左下角祭壇上的恢復水晶，站在前面按 A 鍵和它對話可以回復生命；旁邊的告示牌有說明。右側的高塔是「無限修煉塔」，可以反覆挑戰各層怪物。<br>玩法：先選召喚等級（C級＝國中理化、B級＝必修物理、A級＝選修物理）→ 選一隻精靈 → 回答牠的咒語（選擇題）→ 答對就召喚攻擊，等級不限，每回合都可自由選擇，等級越高傷害與防禦越強；魔物攻擊時，也要召喚精靈防禦，答錯就吃下全部傷害。屬性相剋：火剋毒、毒剋光、光剋電、電剋火；量子剋光與電；時空剋量子、火、毒；無屬性不剋也不被剋。剋制時攻擊加倍、防禦更強，被剋則相反。毒屬性僅出現於C級召喚，時空屬性僅出現於A級召喚。連續答對有連擊加成，精靈每答對 3 題升一級。</div>
-    <div class="row"><button class="btn" id="go">${S.cleared>0?'繼續冒險':'開始冒險'}</button>${S.cleared>0?'<button class="btn" id="reset">從頭開始</button>':''}</div>
+    <div class="row"><button class="btn" id="codex">成就與圖鑑</button><button class="btn" id="go">${S.cleared>0?'繼續冒險':'開始冒險'}</button>${S.cleared>0?'<button class="btn" id="reset">從頭開始</button>':''}</div>
   </div>`;
+  codex.onclick=showCodex;
   go.onclick=()=>showWorld();
   const r=document.getElementById('reset');
   if(r)r.onclick=()=>{r.textContent='再按一次確認';r.onclick=()=>{S=freshState();setMap(0);W.hp=100;W.x=9;W.y=14;W.px=144;W.py=224;save();showTitle();};};
@@ -979,7 +1027,7 @@ function startBattle(i,lvl=0,opt){
     <div class="box log" id="log"></div>
     <div id="act"></div>`;
   updBars();menu();startLoop();
-  {const nu=unlockFor(i);if(nu.length)spDlg(nu);}
+  {const nu=unlockFor(i);if(nu.length)spDlg(nu);achCheck();}
   setLog(B.wild?`野生的${st.name}出現了！<br>${elLine()}`:`${STAGES[i].place}（${LEVELS[lvl].name}）：${STAGES[i].line}<br>${elLine()}`);
 }
 const elName=e=>ATTR[e]+'屬性';
@@ -1035,7 +1083,7 @@ async function answer(k,q,opts,pick){
   let note='',l0=lv(k);
   if(!def){
     if(ok){
-      S.xp[k]++;B.streak++;
+      S.xp[k]++;B.streak++;S.maxStreak=Math.max(S.maxStreak||0,B.streak);
       const crit=B.tier===3&&q.h, mult=(r>0?2:r<0?.5:1)*(1+Math.min(.5,(B.streak-1)*.1))*(crit?1.5:1)*bonus(k);
       const dmg=Math.max(1,Math.round((16+lvPow(k)*4)*mult*TIERS[B.tier].mult*(0.9+Math.random()*.2)/B.st.def));
       note=(r>0?'屬性剋制，傷害加倍！':r<0?'屬性不利，傷害減半……':'')+(crit?'高難度咒語爆擊，傷害 +50%！':'');
@@ -1055,7 +1103,7 @@ async function answer(k,q,opts,pick){
     if(ok){
       S.xp[k]++;
       const f=(r>0?.15:r<0?.85:.5)*(B.tier===1?1.2:B.tier===3?.8:1);
-      dmg=Math.round(B.incoming*Math.min(1,f));
+      dmg=Math.round(B.incoming*Math.min(1,f/bonus(k)));
       note=r>0?'屬性剋制，幾乎完全擋下！':r<0?'屬性不利，只擋下一點點……':'擋下了一半。';
       setLog(`咒語完成！<b>${spName(k)}</b>擋在你面前。${note}`);
       await sleep(620);
@@ -1076,6 +1124,7 @@ async function answer(k,q,opts,pick){
     note=`${note}（受到 ${dmg} 點傷害）`+(counter>0?`高難度咒語觸發反擊，對${B.st.name}造成 ${counter} 點傷害！`:'');
   }
   if(ok)await masteryDlg(k,l0);
+  await achCheck();
   save();
   feedback(ok,q,note);
 }
@@ -1120,7 +1169,7 @@ function win(){
     m.onclick=()=>showWorld();m.focus();return;
   }
   S.best[B.i]=Math.max(S.best[B.i]||0,B.lvl+1);
-  if(B.i>=S.cleared)S.cleared=B.i+1; save();
+  if(B.i>=S.cleared)S.cleared=B.i+1; save(); achCheck();
   setLog(`${B.st.name}被擊倒了！`);
   if(!B.world){
     act.innerHTML=`<div class="box fb"><span class="head ok">通過第 ${B.i+1} 層！</span>
@@ -1692,7 +1741,7 @@ function arrive(){
   const c=tileAt(W.x,W.y);
   if(c==='D'){W.lock=true;W.held=null;gymScreen();}
   else if(c==='U'){W.lock=true;W.held=null;showMap();}
-  else if(c==='E'){const ex=exitAt(CM(),W.x,W.y),to=ex.to,a=ex.arrive;W.lock=true;W.held=null;setMap(to);W.x=a[0];W.y=a[1];setTimeout(()=>{showWorld('來到「'+MAPS[to].name+'」。');const nu=unlockFor(to);if(nu.length)spDlg(nu);},0);}
+  else if(c==='E'){const ex=exitAt(CM(),W.x,W.y),to=ex.to,a=ex.arrive;W.lock=true;W.held=null;setMap(to);W.x=a[0];W.y=a[1];setTimeout(()=>{showWorld('來到「'+MAPS[to].name+'」。');const nu=unlockFor(to);if(nu.length)spDlg(nu);achCheck();},0);}
   else if(c==='g'){
     W.steps++;
     if(W.steps>=3&&Math.random()<.17){
